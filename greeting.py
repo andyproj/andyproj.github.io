@@ -1,53 +1,64 @@
-from flask import Flask, request, jsonify
-app = Flask(__name__)
+import flask
+from flask import request, jsonify
+import sqlite3
 
+app = flask.Flask(__name__)
+app.config["DEBUG"] = True
 
-@app.route('/getmsg/', methods=['GET'])
-def respond():
-    # Retrieve the name from the url parameter /getmsg/?name=
-    name = request.args.get("name", None)
+def dict_factory(cursor, row):
+    d = {}
+    for idx, col in enumerate(cursor.description):
+        d[col[0]] = row[idx]
+    return d
 
-    # For debugging
-    print(f"Received: {name}")
+@app.route('/', methods=['GET'])
+def home():
+    return '''Distant Reading Archive: A prototype API for distant reading of science fiction novels.'''
 
-    response = {}
+@app.route('/api/v1/resources/books/all', methods=['GET'])
+def api_all():
+    conn = sqlite3.connect('books.db')
+    conn.row_factory = dict_factory
+    cur = conn.cursor()
+    all_books = cur.execute('SELECT * FROM books;').fetchall()
 
-    # Check if the user sent a name at all
-    if not name:
-        response["ERROR"] = "No name found. Please send a name."
-    # Check if the user entered a number
-    elif str(name).isdigit():
-        response["ERROR"] = "The name can't be numeric. Please send a string."
-    else:
-        response["MESSAGE"] = f"Welcome {name} to our awesome API!"
+    return jsonify(all_books)
 
-    # Return the response in json format
-    return jsonify(response)
+@app.errorhandler(404)
+def page_not_found(e):
+    return "404. The resource could not be found.", 404
 
+@app.route('/api/v1/resources/books', methods=['GET'])
+def api_filter():
+    query_parameters = request.args
 
-@app.route('/post/', methods=['POST'])
-def post_something():
-    param = request.form.get('name')
-    print(param)
-    # You can add the test cases you made in the previous function, but in our case here you are just testing the POST functionality
-    if param:
-        return jsonify({
-            "Message": f"Welcome {name} to our awesome API!",
-            # Add this option to distinct the POST request
-            "METHOD": "POST"
-        })
-    else:
-        return jsonify({
-            "ERROR": "No name found. Please send a name."
-        })
+    id = query_parameters.get('id')
+    published = query_parameters.get('published')
+    author = query_parameters.get('author')
 
+    query = "SELECT * FROM books WHERE"
+    to_filter = []
 
-@app.route('/')
-def index():
-    # A welcome message to test our server
-    return "<h1>Welcome to our medium-greeting-api!</h1>"
+    if id:
+        query += ' id=? AND'
+        to_filter.append(id)
+    if published:
+        query += ' published=? AND'
+        to_filter.append(published)
+    if author:
+        query += ' author=? AND'
+        to_filter.append(author)
+    if not (id or published or author):
+        return page_not_found(404)
 
+    query = query[:-4] + ';'
 
-if __name__ == '__main__':
-    # Threaded option to enable multiple instances for multiple user access support
-    app.run(threaded=True, port=5000)
+    conn = sqlite3.connect('books.db')
+    conn.row_factory = dict_factory
+    cur = conn.cursor()
+
+    results = cur.execute(query, to_filter).fetchall()
+
+    return jsonify(results)
+
+app.run()
