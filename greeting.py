@@ -5,10 +5,10 @@ import sqlite3
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
 
-if __name__ == '__main__':
-    # Bind to PORT if defined, otherwise default to 5000.
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+
+# Bind to PORT if defined, otherwise default to 5000.
+port = int(os.environ.get('PORT', 5000))
+    
 
 def dict_factory(cursor, row):
     d = {}
@@ -66,4 +66,4 @@ def api_filter():
 
     return jsonify(results)
 
-app.run()
+app.run(host='0.0.0.0', port=port)
