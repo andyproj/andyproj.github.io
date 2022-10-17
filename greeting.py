@@ -8,7 +8,7 @@ app.config["DEBUG"] = True
 
 
 # Bind to PORT if defined, otherwise default to 5000.
-port = int(os.environ.get('PORT', 5000))
+port = int(os.environ.get('PORT', 8080))
     
 
 def dict_factory(cursor, row):
